@@ -41,6 +41,21 @@ namespace DotnetConsole
       }
     }
 
+    public static async Task<IEnumerable<T>> GetListAsync<T>() where T : class
+    {
+      try
+      {
+        return await ExecuteAsync<T, IEnumerable<T>>(async (repository) => {
+          return await repository.Table.ToListAsync();
+        });
+      }
+      catch (Exception ex)
+      {
+        Console.WriteLine(ex);
+        return null;
+      }
+    }
+
     public static T Insert<T>(T value) where T : class
     {
       return Execute<T, T>((repository) => {

@@ -100,11 +100,11 @@ namespace DotnetConsole
       {
         Database.SetInitializer(new MigrateDatabaseToLatestVersion<PracticeContext, Migrations.Configuration>());
         //Database.SetInitializer(new DropCreateDatabaseIfModelChanges<PracticeContext>());
-        DataBaseCall.SearchStudentByIQuerable();
-        DataBaseCall.SearchStudentByIEnumerable();
-        DataBaseCall.SearchStudentByToList();
-        DataBaseCall.CreateStudent();
-        DataBaseCall.GetStudents();
+        //DataBaseCall.SearchStudentByIQuerable();
+        //DataBaseCall.SearchStudentByIEnumerable();
+        //DataBaseCall.SearchStudentByToList();
+        //DataBaseCall.CreateStudent();
+        //DataBaseCall.GetStudents();
         //DataBaseCall.Insert(new Student { Name = "Pratik Hero" });
         //var result = DataBaseCall.InsertAsync(new Student { Name = "Pratik Hero" });
         //Console.WriteLine(result.Result.Name);
@@ -112,17 +112,24 @@ namespace DotnetConsole
         //DataBaseCall.Insert(new Branch { Name = "ME" });
         //DataBaseCall.Insert(new Teacher { Name = "Math Teacher", Salary = 1000, Email = "b@b.com" });
         //DataBaseCall.Insert(new Teacher { Name = "Nepali Teacher", Salary = 2000 });
-        Func<Teacher, bool> func = (teacher) => true;
-        DataBaseCall.GetList(func).ForEach(b => Console.WriteLine($"Teacher Id: {b.ID}, Teacher Name: {b.Name}"));
-        DataBaseCall.GetStudentsByDynamicExpression().ForEach(b => Console.WriteLine($"Student Id: {b.ID}, Student Name: {b.Name}"));
-        DataBaseCall.GetStudentsByDynamicExpression<Student, bool>(DbClause.WhereThenOrderBy, (student) => true).ForEach(b => Console.WriteLine($"Student Id: {b.ID}, Student Name: {b.Name}"));
+        //Func<Teacher, bool> func = (teacher) => true;
+        //DataBaseCall.GetList(func).ForEach(b => Console.WriteLine($"Teacher Id: {b.ID}, Teacher Name: {b.Name}"));
+        //DataBaseCall.GetStudentsByDynamicExpression().ForEach(b => Console.WriteLine($"Student Id: {b.ID}, Student Name: {b.Name}"));
+        //DataBaseCall.GetStudentsByDynamicExpression<Student, bool>(DbClause.WhereThenOrderBy, (student) => true).ForEach(b => Console.WriteLine($"Student Id: {b.ID}, Student Name: {b.Name}"));
 
-        var students = new List<Student>();
+        //var students = new List<Student>();
 
-        var results = await DataBaseCall.InsertListAsync(students);
-        Console.WriteLine();
-        Console.WriteLine();
-        DataBaseCall.GetStudents();
+        //var results = await DataBaseCall.InsertListAsync(students);
+        //Console.WriteLine();
+        //Console.WriteLine();
+        //DataBaseCall.GetStudents();
+        var results = await DataBaseCall.GetListAsync<Student>();
+        Console.WriteLine("Student Records.");
+
+        foreach(var result in results)
+        {
+          Console.WriteLine($"ID: {result.ID}, Name: {result.Name}");
+        }
       }
       catch(Exception ex)
       {
