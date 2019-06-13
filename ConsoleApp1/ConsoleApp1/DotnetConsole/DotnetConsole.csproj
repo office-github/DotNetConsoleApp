@@ -71,6 +71,7 @@
   <ItemGroup>
     <Compile Include="ActionDelegate.cs" />
     <Compile Include="AllByProperty.cs" />
+    <Compile Include="Classes\DbClause.cs" />
     <Compile Include="Classes\DynamicFromClass.cs" />
     <Compile Include="Classes\ExpressionClass.cs" />
     <Compile Include="Classes\ParallelClass.cs" />

@@ -1,20 +1,22 @@
-﻿using System;
+﻿using DotnetConsole.Classes;
+using System;
 using System.Collections.Generic;
 using System.Data.Entity;
 using System.Data.SqlClient;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Threading.Tasks;
 
 namespace DotnetConsole
 {
   public class DataBaseCall
   {
-    public static List<Teacher> GetTeachers(Expression<Func<Teacher, bool>> expression)
+    public static List<T> GetList<T>(Func<T, bool> func) where T: class
     {
       try
       {
-        return Execute<List<Teacher>, Teacher>((repository) => {
-          return repository.Table.Where(expression).ToList();
+        return Execute<T, List<T>>((repository) => {
+          return repository.Table.Where(func).ToList();
         });
       }
       catch (Exception ex)
@@ -24,12 +26,12 @@ namespace DotnetConsole
       }
     }
 
-    public static Teacher Insert(Teacher teacher)
+    public static async Task<List<T>> GetListAsync<T>(Func<T, bool> func) where T : class
     {
       try
       {
-        return Execute<Teacher, Teacher>((repository) => {
-          return repository.Insert(teacher);
+        return await ExecuteAsync<T, List<T>>(async (repository) => {
+          return await Task.Run(() => repository.Table.Where(func).ToList());
         });
       }
       catch (Exception ex)
@@ -39,12 +41,135 @@ namespace DotnetConsole
       }
     }
 
-    public static List<Student> GetStudents(Expression<Func<Student, bool>> expression)
+    public static T Insert<T>(T value) where T : class
+    {
+      return Execute<T, T>((repository) => {
+        return repository.Insert(value);
+      });
+    }
+
+    public static async Task<T> InsertAsync<T>(T value) where T: class
     {
       try
       {
-        return Execute<List<Student>, Student>((repository) => {
-          return repository.Table.Where(expression).ToList();
+        return await ExecuteAsync<T, T>(async (repository) =>
+        {
+          return await repository.InsertAsync(value);
+        });
+      }
+      catch (Exception ex)
+      {
+        Console.WriteLine(ex);
+        return null;
+      }
+    }
+
+    public static async Task<List<T>> InsertListAsync<T>(List<T> list) where T: class
+    {
+      try
+      {
+        return await ExecuteAsync<T, List<T>>(async (repository) =>
+        {
+          return await repository.InsertListAsync(list);
+        });
+      }
+      catch (Exception ex)
+      {
+        Console.WriteLine(ex);
+        return null;
+      }
+    }
+
+    public static List<Student> GetStudentsByDynamicExpression<T, K>(string clause, Expression<Func<T, K>> expression)
+    {
+      try
+      {
+        return Execute<Student, List<Student>>((repository) => {
+          IQueryable<Student> queryableData = repository.Table;
+          MethodCallExpression callExpression = null;
+
+          switch (clause)
+          {
+            case DbClause.Where:
+              callExpression = Expression.Call(
+                typeof(Queryable),
+                DbClause.Where,
+                new Type[] { queryableData.ElementType },
+                queryableData.Expression,
+                expression);
+              break;
+
+            case DbClause.OrderBy:
+              break;
+
+            case DbClause.WhereThenOrderBy:
+              var whereCallExpression = Expression.Call(
+                typeof(Queryable),
+                DbClause.Where,
+                new Type[] { queryableData.ElementType },
+                queryableData.Expression,
+                expression);
+
+              ParameterExpression argParam = Expression.Parameter(typeof(Student), "s");
+              Expression nameProperty = Expression.Property(argParam, "ID");
+
+              var exp = Expression.Lambda<Func<Student, int>>(nameProperty, argParam);
+              var type = queryableData.ElementType;
+
+              callExpression = Expression.Call(
+              typeof(Queryable),
+              DbClause.OrderBy,
+              new Type[] { queryableData.ElementType, typeof(int) },
+              whereCallExpression,
+              exp);
+              break;
+
+            case DbClause.FirstOrDefault:
+              break;
+
+            default:
+              break;
+          }
+          IQueryable<Student> results = queryableData.Provider.CreateQuery<Student>(callExpression);
+          return results.ToList();
+        });
+      }
+      catch (Exception ex)
+      {
+        Console.WriteLine(ex);
+        return null;
+      }
+    }
+
+
+    public static List<Student> GetStudentsByDynamicExpression()
+    {
+      try
+      {
+        return Execute<Student, List<Student>>((repository) => {
+          IQueryable<Student> queryableData = repository.Table;
+
+          ParameterExpression pe = Expression.Parameter(typeof(Student), "s");
+
+          Expression left = Expression.Property(pe, "ID");
+          Expression right = Expression.Constant(1);
+          Expression e1 = Expression.Equal(left, right);
+ 
+          left = Expression.Property(pe, "Name");
+          right = Expression.Constant("Bijay");
+          Expression e2 = Expression.Equal(left, right);
+
+          Expression predicateBody = Expression.OrElse(e1, e2);
+
+          MethodCallExpression whereCallExpression = Expression.Call(
+              typeof(Queryable),
+              "Where",
+              new Type[] { queryableData.ElementType },
+              queryableData.Expression,
+              Expression.Lambda<Func<Student, bool>>(predicateBody, new ParameterExpression[] { pe }));
+
+          IQueryable<Student> results = queryableData.Provider.CreateQuery<Student>(whereCallExpression);
+          return results.ToList();
         });
       }
       catch(Exception ex)
@@ -54,47 +179,11 @@ namespace DotnetConsole
       }
     }
 
-    public static void Insert(Student student)
-    {
-      using (PracticeContext context = new PracticeContext())
-      {
-        Repository<Student> repository = new Repository<Student>(context);
-        repository.Insert(student);
-      }
-    }
-
-    public static List<Branch> Branches
-    {
-      get
-      {
-        try
-        {
-          return Execute<List<Branch>, Branch>((repository) => {
-            return repository.Table.ToList();
-          });
-        }
-        catch (Exception ex)
-        {
-          Console.WriteLine(ex);
-          return null;
-        }
-      }
-    }
-
-    public static void Insert(Branch branch)
-    {
-      using (PracticeContext context = new PracticeContext())
-      {
-        Repository<Branch> repository = new Repository<Branch>(context);
-        repository.Insert(branch);
-      }
-    }
-
     public static List<Student> GetStudents()
     {
-      return Execute((context) =>
+      return Execute<Student, List<Student>>((repository) =>
       {
-        var students = context.Students.OrderBy(s => s.Name).ToList();
+        var students = repository.Table.OrderBy(s => s.Name).ToList();
 
         if (students != null && students.Count() > 0)
         {
@@ -111,9 +200,9 @@ namespace DotnetConsole
 
     public static List<Student> GetStudentsOrderByAsParallel()
     {
-      return Execute((context) =>
+      return Execute<Student, List<Student>>((repository) =>
       {
-        var students = context.Students.OrderBy(s => s.Name).AsParallel().ToList();
+        var students = repository.Table.OrderBy(s => s.Name).AsParallel().ToList();
 
         if (students != null && students.Count() > 0)
         {
@@ -130,9 +219,9 @@ namespace DotnetConsole
 
     public static List<Student> GetStudentsAsParallelOrderBy()
     {
-      return Execute((context) =>
+      return Execute<Student, List<Student>>((repository) =>
       {
-        var students = context.Students.AsParallel().OrderBy(s => s.Name).ToList();
+        var students = repository.Table.AsParallel().OrderBy(s => s.Name).ToList();
 
         if (students != null && students.Count() > 0)
         {
@@ -155,9 +244,9 @@ namespace DotnetConsole
       if (yesOrNo != "yes")
         return null;
 
-      return Execute((context) =>
+      return Execute<Student, Student>((repository) =>
       {
-        IEnumerable<Student> students = context.Students.AsEnumerable();
+        var students = repository.Table.AsEnumerable();
         Console.WriteLine("Student Id?");
         int id = Convert.ToInt32(Console.ReadLine());
         Student student = students.FirstOrDefault(s => s.ID == id);
@@ -174,9 +263,9 @@ namespace DotnetConsole
       if (yesOrNo != "yes")
         return null;
 
-      return Execute((context) =>
+      return Execute<Student, Student>((repository) =>
       {
-        IEnumerable<Student> students = context.Students.AsQueryable();
+        var students = repository.Table.AsQueryable();
         Console.WriteLine("Student Id?");
         int id = Convert.ToInt32(Console.ReadLine());
         Student student = students.FirstOrDefault(s => s.ID == id);
@@ -193,9 +282,9 @@ namespace DotnetConsole
       if (yesOrNo != "yes")
         return null;
 
-      return Execute((context) =>
+      return Execute<Student, Student>((repository) =>
       {
-        IEnumerable<Student> students = context.Students.ToList();
+        var students = repository.Table.ToList();
         Console.WriteLine("Student Id?");
         int id = Convert.ToInt32(Console.ReadLine());
         Student student = students.FirstOrDefault(s => s.ID == id);
@@ -204,15 +293,15 @@ namespace DotnetConsole
       });
     }
 
-    public static bool CreateStudent()
+    public static List<Student> CreateStudent()
     {
-      return Execute((context) => {
+      return Execute<Student, List<Student>>((repository) => {
         string yesOrNo = "No";
         Console.WriteLine("Sure to Create Student? Yes or No");
         yesOrNo = Console.ReadLine().ToLower();
 
         if (yesOrNo != "yes")
-          return false;
+          return null;
 
         List<Student> students = new List<Student>();
         do
@@ -228,34 +317,52 @@ namespace DotnetConsole
         }
         while (yesOrNo == "yes");
 
-        context.Students.AddRange(students);
-        context.SaveChanges();
-        return true;
+        var results = repository.InsertList(students);
+        return results;
       });
     }
 
-    private static TResult Execute<TResult>(Func<PracticeContext, TResult> func)
+    private static void Execute<T>(Action<Repository<T>> action) where T: class
     {
-      try
+      using (PracticeContext context = new PracticeContext())
       {
-        return func(new PracticeContext());
-      }
-      catch(SqlException ex)
-      {
-        Console.WriteLine(ex);
-        throw new Exception("Error Occured.");
+        try
+        {
+          action(new Repository<T>(context));
+        }
+        catch (SqlException ex)
+        {
+          Console.WriteLine(ex);
+          throw new Exception("Error Occured.");
+        }
       }
     }
 
-    private static TResult Execute<TResult, T>(Func<Repository<T>, TResult> func) where T: class
+    private static TResult Execute<T, TResult>(Func<Repository<T>, TResult> func) where T : class
     {
-      using(PracticeContext context = new PracticeContext())
+      using (PracticeContext context = new PracticeContext())
       {
         try
         {
           return func(new Repository<T>(context));
         }
-        catch(Exception ex)
+        catch (Exception ex)
+        {
+          Console.WriteLine(ex);
+          throw new Exception("Error Occured.");
+        }
+      }
+    }
+
+    private async static Task<TResult> ExecuteAsync<T, TResult>(Func<Repository<T>, Task<TResult>> func) where T : class
+    {
+      using (PracticeContext context = new PracticeContext())
+      {
+        try
+        {
+          return await func(new Repository<T>(context));
+        }
+        catch (Exception ex)
         {
           Console.WriteLine(ex);
           throw new Exception("Error Occured.");
@@ -268,8 +375,6 @@ namespace DotnetConsole
   {
     public PracticeContext(): base(){
     }
-
-    public DbSet<Student> Students { get; set; }
 
     protected override void OnModelCreating(DbModelBuilder modelBuilder)
     {

@@ -20,6 +20,56 @@ namespace DotnetConsole.Classes
       Console.WriteLine(result);
     }
 
+    public static MethodCallExpression GetWhereExpression<T>()
+    {
+      // The IQueryable data to query.  
+      IQueryable<T> queryableData = Enumerable.Empty<T>().AsQueryable();
+
+      // Compose the expression tree that represents the parameter to the predicate.  
+      ParameterExpression pe = Expression.Parameter(typeof(T), "t");
+
+      // ***** Where(company => (company.ToLower() == "coho winery" || company.Length > 16)) *****  
+      // Create an expression tree that represents the expression 'company.ToLower() == "coho winery"'.  
+      Expression left = Expression.Property(pe, "ID");
+      Expression right = Expression.Constant(1);
+      Expression e1 = Expression.Equal(left, right);
+
+      // Create an expression tree that represents the expression 'company.Length > 16'.  
+      left = Expression.Property(pe, "Name");
+      right = Expression.Constant("Bijay");
+      Expression e2 = Expression.Equal(left, right);
+
+      // Combine the expression trees to create an expression tree that represents the  
+      // expression '(company.ToLower() == "coho winery" || company.Length > 16)'.  
+      Expression predicateBody = Expression.OrElse(e1, e2);
+
+      // Create an expression tree that represents the expression  
+      // 'queryableData.Where(company => (company.ToLower() == "coho winery" || company.Length > 16))'  
+      MethodCallExpression whereCallExpression = Expression.Call(
+          typeof(Queryable),
+          "Where",
+          new Type[] { queryableData.ElementType },
+          queryableData.Expression,
+          Expression.Lambda<Func<T, bool>>(predicateBody, new ParameterExpression[] { pe }));
+      return whereCallExpression;
+    }
+
+    public static void GetExpression()
+    {
+      ParameterExpression argParam = Expression.Parameter(typeof(Student), "s");
+      Expression nameProperty = Expression.Property(argParam, "ID");
+      Expression namespaceProperty = Expression.Property(argParam, "Name");
+
+      var val1 = Expression.Constant(2);
+      var val2 = Expression.Constant("Namespace");
+
+      Expression e1 = Expression.Equal(nameProperty, val1);
+      Expression e2 = Expression.Equal(namespaceProperty, val2);
+      var andExp = Expression.AndAlso(e1, e2);
+
+      var lambda = Expression.Lambda<Func<Student, bool>>(andExp, argParam);
+    }
+
     public static void ExpressionMethod()
     {
       // Add a using directive for System.Linq.Expressions.  
